@@ -1,0 +1,93 @@
+{
+  "variables": {
+    "aws_access_key": "{{env `AWS_ACCESS_KEY_ID`}}",
+    "aws_secret_key": "{{env `AWS_SECRET_ACCESS_KEY`}}",
+    "gce_account_file": "{{env `GCE_ACCOUNT_FILE`}}",
+    "azure_publish_settings": "{{env `AZURE_PUBLISH_SETTINGS`}}"
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "region": "us-east-1",
+    "source_ami": "ami-48400720",
+    "instance_type": "m3.large",
+    "ssh_username": "ec2-user",
+    "ami_name": "chef-appliance {{timestamp}}",
+    "vpc_id": "vpc-0a4efe6f",
+    "subnet_id": "subnet-9fc3d0b7"
+  },
+  {
+    "type": "googlecompute",
+    "account_file": "{{user `gce_account_file`}}",
+    "project_id": "extended-byway-216",
+    "source_image": "rhel-6-v20150226",
+    "machine_type": "n1-standard-1",
+    "ssh_username": "ec2-user",
+    "zone": "us-central1-a",
+    "disk_size": "10",
+    "instance_name": "packer-{{timestamp}}"
+  },
+  {
+    "type": "azure",
+    "publish_settings_path":  "{{user `azure_publish_settings`}}",
+    "subscription_name":  "Pay-As-You-Go",
+    "storage_account":  "ducy",
+    "storage_account_container":  "images",
+    "os_type":  "Linux",
+    "os_image_label": "OpenLogic 6.6",
+    "location": "North Central US",
+    "instance_size":  "Medium",
+    "user_image_label": "ChefServer_Centos6_6_{{timestamp}}"
+  }
+  ],
+  "provisioners": [
+  {
+    "type": "shell",
+    "script": "./build_scripts/ec2_setup.sh"
+  },
+  {
+    "type": "chef-client",
+    "server_url": "https://api.opscode.com/organizations/chef-appliances",
+    "run_list": [
+      "recipe[chef-server-cluster::standalone]"
+    ],
+    "validation_client_name": "chef-appliances-validator",
+    "validation_key_path": "/Users/michael/.chef/chef-appliances-validator.pem"
+  },
+  {
+    "type": "file",
+    "source": "appliance_scripts/rc.local",
+    "destination": "/tmp/rc.local"
+  },
+  {
+    "type": "file",
+    "source": "appliance_scripts/appliance.rb",
+    "destination": "/tmp/appliance.rb"
+  },
+  {
+    "type": "shell",
+    "inline": [
+      "sudo cp /tmp/appliance.rb /etc/opscode/",
+      "sudo bash -c 'cat /tmp/rc.local >> /etc/rc.local'",
+      "sudo rm -fr /etc/chef/*",
+      "sudo mkdir -p /etc/chef/ohai/hints"
+    ]
+  },
+  {
+    "type": "shell",
+    "inline": ["sudo touch /etc/chef/ohai/hints/ec2.json"],
+    "only": ["amazon-ebs"]
+  },
+  {
+    "type": "shell",
+    "inline": ["sudo touch /etc/chef/ohai/hints/gce.json"],
+    "only": ["googlecompute"]
+  },
+  {
+    "type": "shell",
+    "inline": ["sudo touch /etc/chef/ohai/hints/azure.json"],
+    "only": ["azure"]
+  }
+  ]
+}

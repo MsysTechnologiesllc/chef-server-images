@@ -1,0 +1,11 @@
+export HOME=/root
+
+/usr/bin/chef-apply /etc/opscode/appliance.rb
+
+sleep 10
+
+/usr/bin/chef-server-ctl reconfigure 
+
+/usr/bin/opscode-manage-ctl reconfigure
+
+/usr/bin/opscode-reporting-ctl reconfigure
