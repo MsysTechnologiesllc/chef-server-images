@@ -1,0 +1,37 @@
+{
+  "variables": {
+    "azure_publish_settings": "{{env `AZURE_PUBLISH_SETTINGS`}}",
+    "server_url": "{{env `CHEF_SERVER_URL`}}",
+    "validation_client_name": "{{env `CHEF_VALIDATION_CLIENT`}}",
+    "validation_key_path": "{{env `CHEF_VALIDATION_KEY_PATH`}}"
+  },
+  "builders": [
+  {
+    "type": "azure",
+    "publish_settings_path":  "{{user `azure_publish_settings`}}",
+    "subscription_name":  "Pay-As-You-Go",
+    "storage_account":  "mystorage",
+    "storage_account_container":  "vhd-store",
+    "os_type":  "Linux",
+    "os_image_label": "Ubuntu Server 12.04.5.LTS",
+    "location": "West US",
+    "instance_size":  "Medium",
+    "user_image_label": "chef-server-vhd{{timestamp}}"
+  }
+  ],
+  "provisioners": [
+    {
+      "type": "shell",
+      "script": "./build_scripts/ec2_setup.sh"
+    },
+    {
+      "type": "chef-client",
+      "server_url": "{{user `server_url`}}",
+      "run_list": [
+        "recipe[chef-server-image]"
+      ],
+      "validation_client_name": "{{user `validation_client_name`}}",
+      "validation_key_path": "{{user `validation_key_path`}}"
+    }
+  ]
+}
